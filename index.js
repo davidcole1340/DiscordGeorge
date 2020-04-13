@@ -18,6 +18,8 @@ let onAirServicesUpdateTime = 0;
 
 client.once('ready', () => {
     fetchStreamInfo().then(stations => {
+        console.log(`GeorgeFM bot ready - prefix: ${prefix}`);
+        
         client.on('message', message => {
             if (! message.content.startsWith(prefix) || message.author.bot) return;
             let args = message.content.slice(prefix.length).split(' ');
