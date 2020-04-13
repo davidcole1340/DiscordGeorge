@@ -1,5 +1,5 @@
-const { token, prefix, region } = require('./config.json');
-const INVITE = 'https://discordapp.com/oauth2/authorize?client_id=698010076509765674&scope=bot&permissions=36702208'
+const { token, prefix, region, bot_id } = require('./config.json');
+const INVITE = `https://discordapp.com/oauth2/authorize?client_id=${bot_id}&scope=bot&permissions=36702208`;
 
 const STATION_API = `https://fred.aimapi.io/services/station/rova?region=${region}`;
 const ONAIR_API = `https://bruce.radioapi.io/services/onair/rova?region=${region}`;
