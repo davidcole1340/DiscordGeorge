@@ -1,2 +1,4 @@
 # DiscordGeorge
  
+GeorgeFM Discord bot.
+
