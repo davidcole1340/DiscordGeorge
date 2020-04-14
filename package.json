@@ -12,8 +12,6 @@
     "@discordjs/opus": "^0.1.0",
     "discord.js": "^12.1.1",
     "ffmpeg-static": "^4.1.0",
-    "hls-stream": "^1.1.2",
-    "prism-media": "^1.2.1",
     "request": "^2.88.2"
   }
 }

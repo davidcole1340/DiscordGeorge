@@ -4,11 +4,8 @@ const INVITE = `https://discordapp.com/oauth2/authorize?client_id=${bot_id}&scop
 const STATION_API = `https://fred.aimapi.io/services/station/rova?region=${region}`;
 const ONAIR_API = `https://bruce.radioapi.io/services/onair/rova?region=${region}`;
 
-const hls = require('hls-stream');
 const Discord = require('discord.js');
-const prism = require('prism-media');
 const request = require('request');
-const queue = require('./SegmentQueue');
 const client = new Discord.Client();
 
 let broadcasters = new Map();
@@ -50,38 +47,15 @@ client.once('ready', () => {
 
                     if (! broadcasters.get(station.id)) {
                         const broadcaster = client.voice.createBroadcast();
-
-                        const opus = new prism.opus.Encoder({
-                            channels: 2,
-                            rate: 48000,
-                            frameSize: 960
-                        });
-
-                        opus.on('error', (err) => console.error(`Opus ${station.id}: Error - ${err}`));
-                        opus.on('end', () => console.log(`Opus ${station.id}: ended`));
-
-                        const stream = hls.createReadStream(station.highQualityStreamUrl);
-                        const dispatcher = broadcaster.play(opus, { type: 'opus' });
+                        const dispatcher = broadcaster.play(station.highQualityStreamUrl);
 
                         dispatcher.on('start', () => console.log(`Dispatcher ${station.id}: starting broadcast...`));
                         dispatcher.on('error', (err) => console.error(`Dispatcher ${station.id}: error - ${err}`));
                         dispatcher.on('end', () => console.log(`Dispatcher ${station.id}: ended`));
 
-                        const ffmpeg = new prism.FFmpeg({
-                            args: [
-                                '-loglevel', '0',
-                                '-analyzeduration', '0',
-                                '-f', 's16le',
-                                '-ar', '48000',
-                                '-ac', '2'
-                            ]
-                        });
-
                         const handleBroadcasterClose = () => {
-                            stream.destroy();
-                            ffmpeg.destroy();
-                            opus.destroy();
-
+                            // TODO dispatcher end
+                            dispatcher.destroy();
                             broadcasters.delete(station.id);
                         };
 
@@ -99,38 +73,6 @@ client.once('ready', () => {
                         });
 
                         broadcasters.set(station.id, broadcaster);
-
-                        ffmpeg.on('end', () => {
-                            console.log(`FFmpeg ${station.id}: ended`);
-                            handleBroadcasterClose();
-                        })
-                        ffmpeg.on('error', (err) => console.error(`FFmpeg ${station.id}: error - ${err}`));
-                        ffmpeg.pipe(opus);
-
-                        const segments = new queue.SegmentQueue();
-
-                        stream.on('data', data => {
-                            if (data.type == 'playlist' && ! data.isMasterPlaylist && ! segments.isReady()) {
-                                let startingSegment = data.segments[0];
-                                segments.setStartingSegment(startingSegment.mediaSequenceNumber);
-                            }
-
-                            if (data.type != 'segment' || ! segments.isReady()) return;
-                            segments.add(data);
-                        });
-
-                        segments.on('segment', segment => {
-                            ffmpeg.write(segment.data);
-                        });
-
-                        segments.on('titles', titles => {
-                            console.log(`${station.id}: now playing ${titles[0]}`);
-
-                            stationInformation.set(station.id, {
-                                station: station,
-                                played: titles
-                            });
-                        });
                     }
 
                     if (!message.member.voice.channel) {
