@@ -82,6 +82,8 @@ client.once('ready', () => {
 
                     message.member.voice.channel.join().then(connection => {
                         connection.play(broadcasters.get(station.id));
+                    }, err => {
+                        message.channel.send('Could not join the voice channel.');
                     });
 
                     break;
