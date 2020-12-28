@@ -4,14 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node index.js",
+    "build": "tsc"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "@discordjs/opus": "^0.1.0",
+    "bent": "^7.3.12",
     "discord.js": "^12.1.1",
     "ffmpeg-static": "^4.1.0",
-    "request": "^2.88.2"
+    "lodash": "^4.17.20"
+  },
+  "devDependencies": {
+    "@types/bent": "^7.3.2",
+    "@types/lodash": "^4.14.166",
+    "typescript": "^4.1.3"
   }
 }

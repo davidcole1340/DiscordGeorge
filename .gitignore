@@ -1,4 +1,7 @@
 config.json
+yarn.lock
+build
+*.js
 
 # Logs
 logs

@@ -1,20 +1,17 @@
 const { token, prefix, region, bot_id } = require('./config.json');
 const INVITE = `https://discordapp.com/oauth2/authorize?client_id=${bot_id}&scope=bot&permissions=36702208`;
 
-const STATION_API = `https://fred.aimapi.io/services/station/rova?region=${region}`;
-const ONAIR_API = `https://bruce.radioapi.io/services/onair/rova?region=${region}`;
+import * as Discord from 'discord.js';
+import Api from './api';
+import * as _ from 'lodash';
 
-const Discord = require('discord.js');
-const request = require('request');
 const client = new Discord.Client();
 
-let broadcasters = new Map();
-let stationInformation = new Map();
-let onAirServices = [];
-let onAirServicesUpdateTime = 0;
+const broadcasters = new Map();
 
 client.once('ready', () => {
-  fetchStreamInfo().then(stations => {
+  const api = new Api(region);
+  api.fetchStreamInfo().then(stations => {
     console.log(`GeorgeFM bot ready - prefix: ${prefix}`);
 
     client.on('message', message => {
@@ -24,28 +21,39 @@ client.once('ready', () => {
 
       switch (args[0]) {
         case 'station':
-          let station = stations.find(element => element.id == args[1]);
+          const station = stations.find(element => element.id == args[1]);
 
-          if (!station) {
-            const stationEmbed = new Discord.MessageEmbed()
-              .setColor('#ffffff')
-              .setTitle('Stations')
-              .setAuthor('George FM')
-              .setTimestamp();
+          if (! station) {
+            // 25 max fields per embed - 3 fields per station, ~8 stations
+            const chunks = _.chunk(stations, 8);
 
-            stations.forEach(station => {
-              stationEmbed.addFields(
-                { name: '\u200B', value: '\u200B' },
-                { name: 'Name', value: station.sortName, inline: true },
-                { name: 'Command', value: `${prefix} station ${station.id}`, inline: true }
-              );
+            chunks.forEach(chunk => {
+              const stationEmbed = new Discord.MessageEmbed()
+                .setColor('#ffffff')
+                .setTitle('Stations')
+                .setAuthor('George FM')
+                .setTimestamp();
+
+              chunk.forEach(station => {
+                stationEmbed.addFields(
+                  { name: '\u200B', value: '\u200B' },
+                  { name: 'Name', value: `${station.brandName} - ${station.sortName}`, inline: true },
+                  { name: 'Command', value: `${prefix} station ${station.id}`, inline: true }
+                );
+              });
+              
+              message.channel.send(stationEmbed);
             });
 
-            message.channel.send(stationEmbed);
             break;
           }
 
-          if (!broadcasters.get(station.id)) {
+          if (! client.voice) {
+            message.reply("Error with voice client - please try again.");
+            break;
+          }
+
+          if (! broadcasters.get(station.id)) {
             const broadcaster = client.voice.createBroadcast();
             const dispatcher = broadcaster.play(station.highQualityStreamUrl);
 
@@ -75,7 +83,7 @@ client.once('ready', () => {
             broadcasters.set(station.id, broadcaster);
           }
 
-          if (!message.member.voice.channel) {
+          if (!message.member?.voice.channel) {
             message.channel.send('You must be in a voice channel.');
             break;
           }
@@ -89,8 +97,8 @@ client.once('ready', () => {
           break;
 
         case 'leave':
-          client.voice.connections.forEach(connection => {
-            if (connection.channel == message.member.voice.channel) {
+          client.voice?.connections.forEach(connection => {
+            if (connection.channel == message.member?.voice.channel) {
               connection.disconnect();
             }
           });
@@ -98,8 +106,8 @@ client.once('ready', () => {
           break;
 
         case 'playing':
-          const generatePlayingEmbed = stationid => {
-            fetchOnAirServices().then(services => {
+          const generatePlayingEmbed = (stationid: string) => {
+            api.fetchOnAirServices().then(services => {
               const filteredServices = services.filter(service => service.id == stationid);
 
               if (filteredServices.length < 1) {
@@ -124,15 +132,15 @@ client.once('ready', () => {
 
                 message.channel.send(nowPlayingEmbed);
               }
-            });
+            }, console.error);
           };
 
-          if (!args[1]) {
+          if (! args[1]) {
             let foundChannel = false;
 
-            if (message.member.voice.channel) {
-              client.voice.connections.forEach(connection => {
-                if (connection.channel == message.member.voice.channel) {
+            if (message.member?.voice.channel) {
+              client.voice?.connections.forEach(connection => {
+                if (connection.channel == message.member?.voice.channel) {
                   broadcasters.forEach((broadcast, stationid) => {
                     if (connection.dispatcher.broadcast == broadcast) {
                       foundChannel = true;
@@ -143,7 +151,7 @@ client.once('ready', () => {
               });
             }
 
-            if (!message.member.voice.channel || !foundChannel) {
+            if (! message.member?.voice.channel || ! foundChannel) {
               message.channel.send(`Join a voice channel and start the GeorgeFM bot to see what is playing. To see what a station is playing, use \`${prefix} station [stationid]\``);
             }
           } else {
@@ -176,65 +184,3 @@ client.once('ready', () => {
 });
 
 client.login(token);
-
-function fetchStreamInfo() {
-  return new Promise((resolve, reject) => {
-    request(STATION_API, (error, response, body) => {
-      if (error) {
-        console.error(error);
-        reject(error);
-
-        return;
-      }
-
-      if (!response || response.statusCode != 200) {
-        console.error('StreamInfo: no response');
-        reject();
-
-        return;
-      }
-
-      const data = JSON.parse(body);
-      let stations = [];
-      data.stations.forEach(station => {
-        if (station.brand != 'georgefm' || !station.id) return;
-
-        stations.push(station);
-      });
-
-      resolve(stations);
-    })
-  });
-}
-
-function fetchOnAirServices() {
-  return new Promise((resolve, reject) => {
-    const currentTime = Date.now();
-
-    if ((currentTime - onAirServicesUpdateTime) < 20000) {
-      resolve(onAirServices);
-    } else {
-      request(ONAIR_API, (error, response, body) => {
-        if (error) {
-          console.error(error);
-          reject(error);
-
-          return;
-        }
-
-        if (!response || response.statusCode != 200) {
-          console.error('OnAirServices: no response');
-          reject();
-
-          return;
-        }
-
-        const data = JSON.parse(body).stations;
-
-        onAirServices = data;
-        onAirServicesUpdateTime = Date.now();
-        resolve(data);
-      });
-    }
-  });
-}
