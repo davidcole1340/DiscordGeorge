@@ -171,10 +171,10 @@ client.once('ready', () => {
             .setTitle('Help')
             .setAuthor('George FM')
             .addFields(
-              { name: '!george station [station]', value: 'Shows a list of stations' },
-              { name: '!george leave', value: 'Stops George FM in your voice channel' },
-              { name: '!george playing [station]', value: 'Shows the last 5 songs played' },
-              { name: '!george invite', value: 'Gives the invite link for the bot' }
+              { name: `${prefix} station [station]`, value: 'Shows a list of stations' },
+              { name: `${prefix} leave`, value: 'Stops George FM in your voice channel' },
+              { name: `${prefix} playing [station]`, value: 'Shows the last 5 songs played' },
+              { name: `${prefix} invite`, value: 'Gives the invite link for the bot' }
             );
           message.channel.send(helpEmbed);
           break;
