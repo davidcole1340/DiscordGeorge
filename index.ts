@@ -25,7 +25,7 @@ client.once('ready', () => {
 
           if (! station) {
             // 25 max fields per embed - 3 fields per station, ~8 stations
-            const chunks = _.chunk(stations, 8);
+            const chunks = _.chunk(stations, 25);
 
             chunks.forEach(chunk => {
               const stationEmbed = new Discord.MessageEmbed()
@@ -35,11 +35,10 @@ client.once('ready', () => {
                 .setTimestamp();
 
               chunk.forEach(station => {
-                stationEmbed.addFields(
-                  { name: '\u200B', value: '\u200B' },
-                  { name: 'Name', value: `${station.brandName} - ${station.sortName}`, inline: true },
-                  { name: 'Command', value: `${prefix} station ${station.id}`, inline: true }
-                );
+                stationEmbed.addFields({
+                  name: `${station.brandName} - ${station.sortName}`,
+                  value: `${prefix} station ${station.id}`
+                });
               });
               
               message.channel.send(stationEmbed);
